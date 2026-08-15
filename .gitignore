@@ -1,0 +1,19 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Corpus compilé (régénérable via corpus/Makefile)
+corpus/build/
+
+# Sorties de fuzzing AFL++ et cores
+.fuzz/
+*.core
+core
+
+# Divers
+.DS_Store

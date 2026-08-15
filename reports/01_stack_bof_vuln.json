@@ -1,0 +1,74 @@
+{
+  "target": "/home/jinshi/dev/ecole/rattrapage-pa/corpus/build/01_stack_bof_vuln",
+  "elf": {
+    "path": "/home/jinshi/dev/ecole/rattrapage-pa/corpus/build/01_stack_bof_vuln",
+    "arch": "x64",
+    "bits": 64,
+    "endianness": "little",
+    "is_pie": false,
+    "entrypoint": 4198496,
+    "protections": {
+      "nx": false,
+      "canary": false,
+      "pie": false,
+      "relro": "none",
+      "fortify": false
+    },
+    "imports": [
+      "_ITM_deregisterTMCloneTable",
+      "_ITM_registerTMCloneTable",
+      "__gmon_start__",
+      "__libc_start_main",
+      "fgets",
+      "printf",
+      "strcpy"
+    ],
+    "functions": {
+      "deregister_tm_clones": 4198560,
+      "register_tm_clones": 4198608,
+      "__do_global_dtors_aux": 4198672,
+      "frame_dummy": 4198720,
+      "vuln": 4198726,
+      "_fini": 4198824,
+      "_dl_relocate_static_pie": 4198544,
+      "_start": 4198496,
+      "main": 4198808,
+      "_init": 4198400
+    },
+    "has_symbols": true
+  },
+  "findings": [
+    {
+      "vuln_class": "stack_buffer_overflow",
+      "function": "vuln",
+      "static_offset": 4198776,
+      "exploit_offset": null,
+      "severity": "critical",
+      "score": 90.0,
+      "confidence": "confirmed",
+      "source": "dynamic:casr-san+static:dangerous_funcs+static:taint",
+      "description": "Crash reproductible (stack-buffer-overflow(write)) à /home/jinshi/dev/ecole/rattrapage-pa/corpus/src/01_stack_bof.c:40.",
+      "remediation": "corriger la vulnérabilité mémoire à l'origine du crash",
+      "evidence": {
+        "sink": "strcpy",
+        "call_site": "0x401178",
+        "source": "fgets",
+        "bug": "stack-buffer-overflow(write)",
+        "exploitability": "EXPLOITABLE",
+        "crash_location": "/home/jinshi/dev/ecole/rattrapage-pa/corpus/src/01_stack_bof.c:40",
+        "tool": "casr-san"
+      },
+      "protections_context": []
+    }
+  ],
+  "stats": {
+    "total": 1,
+    "par_severite": {
+      "critical": 1
+    },
+    "par_confiance": {
+      "confirmed": 1
+    },
+    "score_max": 90.0
+  }
+}

@@ -1,0 +1,47 @@
+# Intégration continue (bonus §4) : analyse statique automatique à chaque commit.
+#
+# À placer dans .github/workflows/ci.yml pour être actif sur GitHub. On y lance
+# les tests unitaires et l'analyse statique d'argus sur tout le corpus. Le volet
+# dynamique (AFL++, CASR) est volontairement exclu de cette CI de base : il est
+# plus lourd et relève d'un runner dédié.
+
+name: argus - analyse statique
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dépendances système (compilateur + ASan)
+        run: sudo apt-get update && sudo apt-get install -y gcc
+
+      - name: Dépendances Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Compiler le corpus
+        run: make -C corpus all
+
+      - name: Tests unitaires
+        run: pytest -q
+
+      - name: Analyse statique de tout le corpus
+        run: |
+          set -e
+          for binaire in corpus/build/*_vuln; do
+            echo "::group::$binaire"
+            argus --static --no-checksec "$binaire"
+            echo "::endgroup::"
+          done

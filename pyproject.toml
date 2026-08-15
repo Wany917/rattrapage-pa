@@ -1,0 +1,28 @@
+[project]
+name = "rattrapage-pa"
+version = "0.1.0"
+description = "Pipeline d'analyse automatisée de vulnérabilités bas niveau sur binaire ELF x86-64"
+requires-python = ">=3.11"
+dependencies = [
+    "pyelftools>=0.31",
+    "capstone>=5.0",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+poc = ["pwntools>=4.13"]
+
+[project.scripts]
+argus = "pipeline.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pipeline*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

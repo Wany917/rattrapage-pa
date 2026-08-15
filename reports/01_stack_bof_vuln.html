@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rapport argus : /home/jinshi/dev/ecole/rattrapage-pa/corpus/build/01_stack_bof_vuln</title>
+<style>
+  :root { --bord: #e2e2e6; --fg: #1b1b1f; --muted: #5c5c66; --bg: #ffffff; --panel: #f7f7f9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+         color: var(--fg); background: var(--bg); line-height: 1.5; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header .sub { color: var(--muted); font-size: 13px; word-break: break-all; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+       border-bottom: 1px solid var(--bord); padding-bottom: 6px; margin: 30px 0 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--bord); border-radius: 10px; padding: 14px 16px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 14px; }
+  .kv .k { color: var(--muted); }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px;
+           font-weight: 600; margin: 3px 6px 3px 0; }
+  .on { background: #e6f4ea; color: #146c2e; } .off { background: #fce8e6; color: #b3261e; }
+  .tiles { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tile { border: 1px solid var(--bord); border-radius: 10px; padding: 10px 14px; min-width: 92px; }
+  .tile .n { font-size: 22px; font-weight: 700; } .tile .l { font-size: 12px; color: var(--muted); }
+  .finding { border: 1px solid var(--bord); border-left-width: 5px; border-radius: 10px;
+             padding: 14px 16px; margin: 12px 0; }
+  .finding h3 { margin: 0 0 8px; font-size: 16px; }
+  .sev { display: inline-block; padding: 2px 9px; border-radius: 6px; font-weight: 700;
+         font-size: 12px; margin-right: 8px; vertical-align: middle; }
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 4px 16px;
+          font-size: 13px; margin: 8px 0; }
+  .meta .k { color: var(--muted); }
+  .desc { margin: 8px 0; }
+  .rem { background: #f0f6ff; border-radius: 8px; padding: 8px 12px; font-size: 14px; }
+  .ev { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); margin-top: 8px;
+        word-break: break-all; }
+  code { font-family: ui-monospace, monospace; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Rapport d'analyse de vulnérabilités</h1>
+    <div class="sub">Cible : <code>/home/jinshi/dev/ecole/rattrapage-pa/corpus/build/01_stack_bof_vuln</code></div>
+    <div class="sub">Généré le 2026-08-03 16:56 par argus 0.1.0</div>
+  </header>
+
+  
+  <h2>Cible</h2>
+  <div class="grid">
+    <div class="panel">
+      <div class="kv"><span class="k">Architecture</span><span>x64 (64 bits)</span></div>
+      <div class="kv"><span class="k">Type</span><span>exécutable non-PIE</span></div>
+      <div class="kv"><span class="k">Point d'entrée</span><span><code>0x401060</code></span></div>
+      <div class="kv"><span class="k">Symboles</span><span>présents</span></div>
+      <div class="kv"><span class="k">Fonctions</span><span>10 déf. / 7 imp.</span></div>
+    </div>
+    <div class="panel">
+      <div style="margin-bottom:6px; color:var(--muted); font-size:13px;">Protections</div>
+      
+        <span class="badge off">NX</span>
+      
+        <span class="badge off">Canary</span>
+      
+        <span class="badge off">PIE</span>
+      
+        <span class="badge off">RELRO : none</span>
+      
+        <span class="badge off">FORTIFY</span>
+      
+    </div>
+  </div>
+  
+
+  <h2>Synthèse</h2>
+  <div class="tiles">
+    <div class="tile"><div class="n">1</div><div class="l">finding(s)</div></div>
+    
+      <div class="tile" style="border-color:#b3261e">
+        <div class="n" style="color:#b3261e">1</div><div class="l">CRITICAL</div>
+      </div>
+    
+  </div>
+
+  <h2>Vulnérabilités</h2>
+  
+  
+  <div class="finding" style="border-left-color:#b3261e; background:#fce8e622;">
+    <h3><span class="sev" style="background:#fce8e6; color:#b3261e">CRITICAL 90.0</span>
+        stack_buffer_overflow — <code>vuln</code></h3>
+    <div class="meta">
+      <div><span class="k">Confiance :</span> confirmed</div>
+      <div><span class="k">Exploitabilité :</span> EXPLOITABLE</div>
+      <div><span class="k">Offset statique :</span> <code>0x401178</code></div>
+      <div><span class="k">Offset exploit :</span> <code>-</code></div>
+      <div style="grid-column:1/-1;"><span class="k">Sources :</span> dynamic:casr-san, static:dangerous_funcs, static:taint</div>
+    </div>
+    <div class="desc">Crash reproductible (stack-buffer-overflow(write)) à /home/jinshi/dev/ecole/rattrapage-pa/corpus/src/01_stack_bof.c:40.</div>
+    <div class="rem"><strong>Remédiation :</strong> corriger la vulnérabilité mémoire à l'origine du crash</div>
+    <div class="ev">Preuves : sink = strcpy, call_site = 0x401178, source = fgets, bug = stack-buffer-overflow(write), exploitability = EXPLOITABLE, crash_location = /home/jinshi/dev/ecole/rattrapage-pa/corpus/src/01_stack_bof.c:40, tool = casr-san</div>
+  </div>
+  
+
+  <footer>argus 0.1.0 — sécurité défensive / audit. Corpus de test écrit pour l'exercice.</footer>
+</div>
+</body>
+</html>
