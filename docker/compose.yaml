@@ -1,0 +1,25 @@
+# Démo argus. Build + shell interactif, reports/ monté sur l'hôte pour récupérer
+# les rapports générés pendant la démo.
+#
+#   docker compose -f docker/compose.yaml build
+#   docker compose -f docker/compose.yaml run --rm argus
+#
+services:
+  argus:
+    platform: linux/amd64
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: argus:demo
+    working_dir: /app
+    # CASR (triage) a besoin du syscall personality, bloqué par le seccomp Docker.
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ../reports:/app/reports
+      # pipeline installé en editable : les tweaks Python sont pris en live,
+      # sans rebuild (le corpus compilé de l'image reste intact).
+      - ../pipeline:/app/pipeline
+    stdin_open: true
+    tty: true
+    command: /bin/bash

@@ -35,6 +35,33 @@ docs/      rapport et notes de méthodologie
 tests/     tests unitaires (pytest)
 ```
 
+## Démo reproductible (Docker, notamment macOS)
+
+Le pipeline vise des ELF x86-64 et l'outillage Linux (gcc GNU, AFL++, ASan,
+CASR). Sur une machine sans cet environnement (macOS, autre distro), l'image
+`docker/Dockerfile` reproduit tout : outillage, corpus compilé et `argus`
+installé. Elle se construit en `linux/amd64` pour que disasm, offsets et PoC
+(RIP à l'offset 72) correspondent au rapport.
+
+```
+docker compose -f docker/compose.yaml build      # ~10-20 min (AFL++ + CASR)
+docker compose -f docker/compose.yaml run --rm argus
+# puis, dans le conteneur :
+scripts/demo.sh                                  # rejoue les 4 étapes de la démo
+```
+
+Le compose passe déjà `--security-opt seccomp=unconfined`, requis par CASR
+(syscall `personality`). En `docker run` direct, l'ajouter explicitement :
+
+```
+docker run --rm -it --platform linux/amd64 --security-opt seccomp=unconfined \
+       -v "$PWD/reports:/app/reports" argus:demo
+```
+
+AFL++ tourne en mode plugin GCC (`AFL_CC_COMPILER=GCC_PLUGIN`). Sur Apple
+Silicon le fuzzing tourne sous émulation (plus lent) : le `--fuzz-timeout` de la
+démo est à 60 s pour laisser AFL découvrir le crash.
+
 ## Installation (Arch Linux)
 
 Environnement Python (venv, shell fish) :
