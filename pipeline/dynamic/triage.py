@@ -36,9 +36,15 @@ def _class_from_text(text: str) -> VulnClass:
     return VulnClass.UNKNOWN
 
 
+# Frames à ignorer pour remonter à la frame utilisateur : runtime ASan, libc, et
+# les intercepteurs du sanitizer (ex. `read` dans sanitizer_common_interceptors.inc,
+# en tête de trace sur Ubuntu/CI mais absents sur d'autres distros).
+_SKIP_FRAME = ("libasan", "libc.so", "sanitizer_common", "interceptor", "libsanitizer")
+
+
 def _first_source_frame(lines) -> tuple[str, Optional[str], Optional[int]]:
     for frame in lines:
-        if "libasan" in frame or "libc.so" in frame:
+        if any(marqueur in frame for marqueur in _SKIP_FRAME):
             continue
         m = _FRAME_RE.search(frame)
         if m:
