@@ -7,7 +7,7 @@ import json
 import sys
 from dataclasses import asdict
 
-from pipeline import __version__
+from pipeline import __version__, colors
 from pipeline.ingestion import ingest
 from pipeline.models import ELFInfo, _to_jsonable
 
@@ -37,7 +37,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _oui_non(valeur: bool) -> str:
-    return "oui" if valeur else "non"
+    return colors.flag("oui" if valeur else "non", valeur)
+
+
+def _relro(valeur: str) -> str:
+    return colors.flag(valeur, valeur == "full")
 
 
 def _format_summary(info: ELFInfo) -> str:
@@ -51,7 +55,7 @@ def _format_summary(info: ELFInfo) -> str:
         f"    NX      : {_oui_non(prot['nx'])}",
         f"    Canary  : {_oui_non(prot['canary'])}",
         f"    PIE     : {_oui_non(prot['pie'])}",
-        f"    RELRO   : {prot['relro']}",
+        f"    RELRO   : {_relro(prot['relro'])}",
         f"    FORTIFY : {_oui_non(prot['fortify'])}",
     ]
 
@@ -59,7 +63,8 @@ def _format_summary(info: ELFInfo) -> str:
     if checksec is not None:
         cles = ("nx", "canary", "pie", "relro", "fortify")
         accord = all(prot[c] == checksec[c] for c in cles)
-        lignes.append(f"    checksec: {'concordant' if accord else 'DIVERGENT'}")
+        etat = colors.flag("concordant", True) if accord else colors.flag("DIVERGENT", False)
+        lignes.append(f"    checksec: {etat}")
 
     lignes += [
         f"Fonctions    : {len(info.functions)} définies, {len(info.imports)} importées",
@@ -74,11 +79,15 @@ def _format_findings(findings: list) -> str:
     lignes = [f"Findings : {len(findings)}"]
     for finding in findings:
         offset = f"0x{finding.static_offset:x}" if finding.static_offset is not None else "?"
+        sev = finding.severity.value
+        tag = colors.severity(f"[{sev.upper()} {finding.score}]", sev)
+        classe = colors.paint(f"[{finding.vuln_class.value}]", "magenta")
+        conf = colors.confidence(finding.confidence.value, finding.confidence.value)
         lignes.append(
-            f"    [{finding.severity.value.upper()} {finding.score}]"
-            f" [{finding.vuln_class.value}] {finding.function} @ {offset}"
+            f"    {tag}"
+            f" {classe} {finding.function} @ {offset}"
             f" : {finding.description}"
-            f" (confiance : {finding.confidence.value}, source : {finding.source})"
+            f" (confiance : {conf}, source : {finding.source})"
         )
     return "\n".join(lignes)
 
