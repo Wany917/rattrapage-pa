@@ -34,7 +34,11 @@ CFLAGS_PROT  := -O2 -g -fstack-protector-all -fPIE \
 LDFLAGS_PROT := -pie -Wl,-z,relro -Wl,-z,now
 
 # Profil ASAN : instrumentation mémoire pour un triage exact (type + trace).
-CFLAGS_ASAN  := -O1 -g -fsanitize=address -fno-omit-frame-pointer -Wno-format-security
+# FORTIFY désactivé explicitement : certaines distros (Ubuntu, runners CI)
+# l'activent par défaut dès -O1, et son garde-fou glibc (SIGABRT) masque alors
+# le rapport ASan qui porte la vraie classe de crash. Redondant avec ASan.
+CFLAGS_ASAN  := -O1 -g -fsanitize=address -fno-omit-frame-pointer \
+                -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -Wno-format-security
 LDFLAGS_ASAN := -fsanitize=address
 
 .PHONY: all vuln prot asan clean list
