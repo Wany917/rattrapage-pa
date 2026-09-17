@@ -30,7 +30,8 @@ Voir `docs/` pour la méthodologie, les algorithmes, les résultats et les limit
 corpus/    binaires C vulnérables + Makefile (profils vuln / prot / asan)
 pipeline/  modules Python du pipeline
 reports/   rapports générés (JSON + HTML/MD)
-ci/        intégration continue (GitHub Actions)
+docker/    image de démo reproductible (Dockerfile + compose)
+.github/   intégration continue (GitHub Actions : tests + analyse statique)
 docs/      rapport et notes de méthodologie
 tests/     tests unitaires (pytest)
 ```
