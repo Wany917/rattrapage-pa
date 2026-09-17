@@ -1,8 +1,4 @@
-"""Test fumigène : le paquet s'importe et le contrat de données fonctionne.
-
-Ce test ne dépend d'aucune bibliothèque externe (ni Capstone, ni pyelftools) :
-il valide uniquement que le squelette du projet est cohérent.
-"""
+"""Test fumigène : le paquet s'importe et le contrat de données fonctionne."""
 
 from pipeline import __version__
 from pipeline.models import Confidence, Finding, Report, Severity, VulnClass
@@ -13,7 +9,6 @@ def test_version_presente():
 
 
 def test_finding_serialisation():
-    """Un Finding sérialisé doit exposer les valeurs des enums, pas les objets."""
     finding = Finding(
         vuln_class=VulnClass.STACK_BOF,
         function="main",
@@ -30,7 +25,6 @@ def test_finding_serialisation():
 
 
 def test_cle_deduplication():
-    """Deux findings de même classe et même fonction partagent la même clé."""
     a = Finding(vuln_class=VulnClass.HEAP_BOF, function="parse")
     b = Finding(vuln_class=VulnClass.HEAP_BOF, function="parse")
     assert a.key() == b.key()

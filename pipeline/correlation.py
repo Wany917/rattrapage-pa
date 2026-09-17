@@ -1,15 +1,4 @@
-"""Corrélation : fusion des findings statiques et dynamiques.
-
-Un même défaut est souvent vu par plusieurs analyses (ex : buffer_sizing en
-PROBABLE et le crash CASR en CONFIRMED). On les fusionne par fonction, en
-réconciliant les classes : deux findings d'une même fonction fusionnent si leur
-classe est identique, ou si l'un est UNKNOWN. Ce dernier cas est typique du
-format string, que le dynamique voit comme un simple SEGV non typé alors que le
-statique lui donne sa classe.
-
-Le finding fusionné conserve la confiance la plus haute, l'offset statique connu,
-l'exploitabilité dynamique, et combine sources et preuves.
-"""
+"""Corrélation : fusion des findings statiques et dynamiques par fonction."""
 
 from __future__ import annotations
 
@@ -19,12 +8,10 @@ _RANG = {Confidence.POSSIBLE: 0, Confidence.PROBABLE: 1, Confidence.CONFIRMED: 2
 
 
 def _compatibles(a: VulnClass, b: VulnClass) -> bool:
-    """Deux classes fusionnables : identiques, ou l'une non typée (UNKNOWN)."""
     return a == b or a == VulnClass.UNKNOWN or b == VulnClass.UNKNOWN
 
 
 def correlate(findings: list[Finding]) -> list[Finding]:
-    """Fusionne les findings d'une même vulnérabilité. Renvoie la liste réduite."""
     groupes: list[Finding] = []
     for finding in findings:
         cible = next(
@@ -50,18 +37,14 @@ def _copie(f: Finding) -> Finding:
 
 
 def _fusionner(base: Finding, autre: Finding) -> None:
-    # Classe : préférer une classe spécifique à UNKNOWN.
     if base.vuln_class == VulnClass.UNKNOWN and autre.vuln_class != VulnClass.UNKNOWN:
         base.vuln_class = autre.vuln_class
-    # Offsets : récupérer ceux qui sont connus.
     if base.static_offset is None:
         base.static_offset = autre.static_offset
     if base.exploit_offset is None:
         base.exploit_offset = autre.exploit_offset
-    # Preuves et sources combinées.
     base.evidence = {**base.evidence, **autre.evidence}
     base.source = "+".join(sorted(set(base.source.split("+")) | set(autre.source.split("+"))))
-    # Confiance : la plus forte l'emporte (et impose sa description).
     if _RANG[autre.confidence] > _RANG[base.confidence]:
         base.confidence = autre.confidence
         base.description = autre.description

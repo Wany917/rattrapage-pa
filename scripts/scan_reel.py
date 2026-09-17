@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Scan argus (statique) sur des binaires réels : robustesse et détection.
-
-Passe l'analyse statique (ingestion + fonctions dangereuses + buffer sizing +
-taint) sur des binaires existants du système, mesure le temps, et résume les
-protections détectées et les findings. Sert à valider argus au-delà du corpus
-maison (ELF réels : PIE, fortifiés, strippés, volumineux).
-
-Usage : python scripts/scan_reel.py /usr/bin/awk /usr/bin/bash ...
-"""
+"""Scan statique argus sur des binaires système réels."""
 
 from __future__ import annotations
 

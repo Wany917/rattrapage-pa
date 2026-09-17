@@ -1,22 +1,4 @@
-"""Détection des fonctions dangereuses (analyse statique black-box).
-
-Deux mécanismes :
-
-  1. Sinks intrinsèquement dangereux (copie non bornée, exécution shell) : on
-     signale chaque appel résolu à gets, strcpy, strcat, sprintf, scanf(...),
-     system, popen, alloca, avec la fonction appelante et l'offset de l'appel.
-
-  2. Chaînes de format : pour printf/fprintf/syslog..., on ne signale QUE si
-     l'argument de format n'est pas une constante. On suit la « constance » des
-     registres par une propagation légère (lea reg, [rip+rodata] => constant ;
-     mov reg, reg => on propage). C'est nécessaire car, à -O0, gcc charge le
-     format via un registre intermédiaire (lea rax, [rip+fmt] ; mov rdi, rax).
-     L'ABI SysV place le format dans rdi (printf) ou rsi (fprintf, syslog...).
-
-Cela évite le bruit (tout binaire importe printf) et cible la vraie vuln
-(printf(buf) où buf est contrôlable). Confiance : POSSIBLE ; le taint tracking
-la fera monter à PROBABLE dans un sous-module ultérieur.
-"""
+"""Détection des appels à fonctions dangereuses et des format strings non constants."""
 
 from __future__ import annotations
 
@@ -50,11 +32,9 @@ FORMAT_ARG: dict[str, str] = {
     "syslog": "rsi", "vsyslog": "rsi",
 }
 
-# La normalisation des sous-registres est fournie par Disassembler.canon().
 
 
 def scan(path: str) -> list[Finding]:
-    """Analyse le binaire `path` et renvoie les findings de fonctions dangereuses."""
     findings: list[Finding] = []
     with open(path, "rb") as f:
         elf = ELFFile(f)
@@ -106,7 +86,6 @@ def _scan_function(dis: Disassembler, fname: str, start: int, size: int) -> list
 
 
 def _track_registers(dis: Disassembler, insn, reg_const: dict) -> None:
-    """Propagation légère de la constance des pointeurs à travers lea/mov."""
     ops = insn.operands
     if not ops or ops[0].type != X86_OP_REG:
         return

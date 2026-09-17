@@ -1,25 +1,4 @@
-/*
- * 05_use_after_free.c : utilisation après libération (use-after-free)
- *
- * CLASSE     : use-after-free (détournement de pointeur de fonction)
- * SOURCE     : fread(stdin) -> chunk recyclé « rejouer »
- * SINK       : c->handler(...) où « c » pointe sur de la mémoire libérée
- * FONCTION   : main(), après free(c)
- * POURQUOI   : après free(c), le chunk part dans le tcache. Un malloc de même
- *              taille (« rejouer ») recycle CE chunk. En écrivant dans
- *              « rejouer », on écrase c->handler (que « c » pointe toujours).
- *              L'appel c->handler() saute alors à une adresse contrôlée.
- * DÉCLENCHER : 1) une ligne pour c->arg (<= 31 octets), 2) 40 octets dont les
- *              octets 32..39 forment l'adresse détournée.
- *              { echo cmd; python3 -c 'import sys; sys.stdout.buffer.write(b"B"*40)'; } | ./05_use_after_free_vuln
- *
- * COMPORTEMENT SELON LE PROFIL :
- *   _vuln : le tcache recycle le chunk -> handler écrasé -> saut contrôlé,
- *           SIGSEGV si l'adresse est invalide.
- *   _prot : PIE/RELRO/canary ne protègent pas ce scénario tas ; même résultat.
- *   _asan : ASan met le chunk en quarantaine (pas de recyclage immédiat) et
- *           signale « heap-use-after-free » dès l'accès à c->handler.
- */
+/* 05_use_after_free.c — UAF avec détournement de pointeur de fonction dans main(). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,26 +20,30 @@ int main(void)
         return 1;
     c->handler = afficher;
 
-    /* Remplit c->arg depuis stdin. */
     if (fgets(c->arg, sizeof(c->arg), stdin) == NULL)
         return 0;
     c->arg[strcspn(c->arg, "\n")] = '\0';
 
-    free(c);   /* libération : « c » devient un pointeur pendouillant (dangling) */
+    free(c);
 
-    /*
-     * Réallocation de même taille : le tcache renvoie le chunk de « c ».
-     * En écrivant dans « rejouer », l'attaquant réécrit c->handler.
-     */
+    /* Même taille -> le tcache recycle le chunk de c. */
     char *rejouer = malloc(sizeof(*c));
     if (rejouer == NULL)
         return 1;
     size_t lus = fread(rejouer, 1, sizeof(*c), stdin);
     (void)lus;
 
-    /* Sink : appel via un pointeur situé dans de la mémoire libérée (UAF). */
     c->handler(c->arg);
 
     free(rejouer);
     return 0;
 }
+
+/*
+ * Notes :
+ * - Après free(c), malloc(sizeof(*c)) recycle le même chunk via le tcache.
+ *   En écrivant dans « rejouer », l'attaquant écrase c->handler (octets 32..39).
+ * - PIE/RELRO/canary ne protègent pas ce scénario tas.
+ * - ASan met le chunk en quarantaine et signale « heap-use-after-free ».
+ * - Déclencher : { echo cmd; python3 -c 'import sys; sys.stdout.buffer.write(b"B"*40)'; } | ./05_use_after_free_vuln
+ */

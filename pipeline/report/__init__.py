@@ -1,8 +1,4 @@
-"""Génération des rapports : JSON (machine) et HTML/Markdown (humain).
-
-`build_report` assemble un objet `Report` (cible + ELFInfo + findings + stats) ;
-`write_all` produit les trois formats dans un dossier de sortie.
-"""
+"""Génération des rapports JSON, HTML et Markdown."""
 
 from __future__ import annotations
 
@@ -15,14 +11,12 @@ from pipeline.report import html_report, json_report, markdown_report
 
 
 def build_report(target: str, elf: Optional[ELFInfo], findings: list[Finding]) -> Report:
-    """Assemble un `Report` complet avec ses statistiques."""
     return Report(target=target, elf=elf, findings=findings, stats=_stats(findings))
 
 
 def _stats(findings: list[Finding]) -> dict:
     par_severite = Counter(f.severity.value for f in findings)
     par_confiance = Counter(f.confidence.value for f in findings)
-    # Ordonner les sévérités de la plus grave à la moins grave.
     ordre = ["critical", "high", "medium", "low", "info"]
     return {
         "total": len(findings),
@@ -33,7 +27,6 @@ def _stats(findings: list[Finding]) -> dict:
 
 
 def write_all(report: Report, out_dir: str) -> dict[str, str]:
-    """Écrit les rapports JSON, HTML et Markdown dans `out_dir`. Renvoie leurs chemins."""
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.splitext(os.path.basename(report.target))[0] or "rapport"
     return {

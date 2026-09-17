@@ -1,29 +1,12 @@
-"""Scoring : estimation de la sévérité par règles (niveau + score 0-100).
-
-Modèle documenté et défendable :
-
-    score = impact(classe) x confiance x exploitabilité(CASR) x mitigations(protections)
-
-  - impact(classe)  : gravité intrinsèque de la primitive (pire cas) ;
-  - confiance       : POSSIBLE / PROBABLE / CONFIRMED ;
-  - exploitabilité  : verdict CASR (EXPLOITABLE / PROBABLY / NOT / UNKNOWN) ;
-  - mitigations     : réduction selon les protections ACTIVES pertinentes pour la
-                      classe (un canary gêne un stack BOF, FORTIFY gêne un format
-                      string, etc.).
-
-Le score est mappé sur un niveau qualitatif. Un même défaut obtient un score bien
-plus élevé sur le profil _vuln (protections désactivées) que sur _prot, ce qui
-alimente directement le tableau comparatif de la Phase 7.
-"""
+"""Scoring : score = impact × confiance × exploitabilité × mitigations."""
 
 from __future__ import annotations
 
 from pipeline.models import Confidence, Finding, Severity, VulnClass
 
-# Gravité intrinsèque par classe (pire cas, sans mitigation).
 _IMPACT = {
-    VulnClass.STACK_BOF: 90,        # contrôle du saved RIP -> exécution de code
-    VulnClass.FORMAT_STRING: 85,    # lecture (%p) et écriture (%n) arbitraires
+    VulnClass.STACK_BOF: 90,
+    VulnClass.FORMAT_STRING: 85,
     VulnClass.HEAP_BOF: 80,
     VulnClass.USE_AFTER_FREE: 80,
     VulnClass.DOUBLE_FREE: 70,
@@ -40,7 +23,6 @@ _EXPLOITABILITE = {
     "UNKNOWN": 0.8,
 }
 
-# Réduction du score par protection ACTIVE, selon la classe (table de décision).
 _MITIGATIONS = {
     VulnClass.STACK_BOF: {"canary": 0.35, "fortify": 0.25, "pie": 0.10, "nx": 0.10},
     VulnClass.FORMAT_STRING: {"fortify": 0.40, "relro": 0.15, "pie": 0.10},
@@ -63,7 +45,7 @@ def _mitigation_factor(vuln_class: VulnClass, protections: dict) -> float:
         poids for prot, poids in _MITIGATIONS.get(vuln_class, {}).items()
         if _protection_active(protections, prot)
     )
-    return max(0.3, 1.0 - reduction)   # plancher : une mitigation ne rend jamais le bug inexistant
+    return max(0.3, 1.0 - reduction)
 
 
 def _niveau(score: float) -> Severity:
@@ -79,7 +61,6 @@ def _niveau(score: float) -> Severity:
 
 
 def score_finding(finding: Finding, protections: dict) -> None:
-    """Calcule et affecte `finding.score` (0-100) et `finding.severity`."""
     impact = _IMPACT.get(finding.vuln_class, 40)
     confiance = _CONFIANCE.get(finding.confidence, 0.6)
     exploitabilite = _EXPLOITABILITE.get(finding.evidence.get("exploitability", "UNKNOWN"), 0.8)
@@ -96,7 +77,6 @@ def score_finding(finding: Finding, protections: dict) -> None:
 
 
 def score_all(findings: list[Finding], protections: dict) -> list[Finding]:
-    """Score chaque finding en place. Renvoie la liste (triée par score décroissant)."""
     for finding in findings:
         score_finding(finding, protections)
     findings.sort(key=lambda f: f.score, reverse=True)

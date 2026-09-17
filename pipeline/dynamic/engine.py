@@ -1,16 +1,4 @@
-"""Pilote du moteur dynamique : build instrumenté -> fuzzing -> triage.
-
-Enchaîne les trois briques sur une source C :
-  1. compile une cible de fuzzing (AFL + ASan) et une cible de triage (ASan) ;
-  2. fuzze la cible pour découvrir des entrées qui font crasher ;
-  3. triage chaque crash (type + exploitabilité) -> findings CONFIRMED.
-
-`file_input` : les programmes qui lisent un fichier (et non stdin) sont fuzzés
-en mode fichier (AFL `@@`) et triagés avec l'entrée passée en argument.
-
-Renvoie une liste vide (sans échouer) si AFL++ ou la compilation manquent : le
-pipeline reste utilisable en mode statique seul.
-"""
+"""Build instrumenté, fuzzing AFL++ et triage des crashes."""
 
 from __future__ import annotations
 
@@ -24,12 +12,11 @@ from pipeline.models import Finding
 
 def analyze_source(source: str, workdir: Optional[str] = None, fuzz_timeout: int = 30,
                    seeds: Optional[str] = None, file_input: bool = False) -> list[Finding]:
-    """Construit, fuzze puis triage `source`. Renvoie des findings CONFIRMED."""
     tmp = None
     if workdir is None:
         tmp = tempfile.TemporaryDirectory()
         workdir = tmp.name
-    os.makedirs(workdir, exist_ok=True)   # robustesse : créer le dossier de travail s'il manque
+    os.makedirs(workdir, exist_ok=True)
     try:
         base = os.path.splitext(os.path.basename(source))[0]
         fuzz_bin = os.path.join(workdir, f"{base}_afl")

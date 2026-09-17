@@ -1,4 +1,4 @@
-"""Rapport Markdown (lisible par un humain, versionnable, convertible PDF/Word)."""
+"""Rapport Markdown."""
 
 from __future__ import annotations
 
@@ -80,7 +80,6 @@ def _finding_md(f: Finding) -> list[str]:
 
 
 def write_md(report: Report, path: str) -> str:
-    """Écrit le rapport Markdown dans `path` et renvoie ce chemin."""
     with open(path, "w", encoding="utf-8") as f:
         f.write(render_markdown(report))
     return path

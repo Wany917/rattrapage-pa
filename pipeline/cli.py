@@ -1,9 +1,4 @@
-"""Interface en ligne de commande d'argus.
-
-Phase 2 : argus effectue l'ingestion d'un binaire et affiche un résumé lisible
-(ou du JSON avec --json). Les étapes statique, dynamique, corrélation et
-reporting seront branchées ici au fil des phases suivantes.
-"""
+"""CLI argus : orchestration du pipeline d'analyse."""
 
 from __future__ import annotations
 
@@ -46,7 +41,6 @@ def _oui_non(valeur: bool) -> str:
 
 
 def _format_summary(info: ELFInfo) -> str:
-    """Résumé lisible de l'ingestion pour le terminal."""
     prot = info.protections
     lignes = [
         f"Cible        : {info.path}",
@@ -75,7 +69,6 @@ def _format_summary(info: ELFInfo) -> str:
 
 
 def _format_findings(findings: list) -> str:
-    """Liste lisible des findings (triés par sévérité) pour le terminal."""
     if not findings:
         return "Findings : aucun."
     lignes = [f"Findings : {len(findings)}"]

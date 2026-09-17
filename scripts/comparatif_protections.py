@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Génère le tableau comparatif _vuln vs _prot du corpus (Phase 7).
-
-Pour chaque vulnérabilité : on récupère la classe et l'exploitabilité (triage
-CASR sur la cible ASan), puis on score la même vulnérabilité contre les
-protections du profil _vuln puis du profil _prot. Cela montre l'effet des
-mitigations : même primitive, sévérité très différente.
-
-Usage : python scripts/comparatif_protections.py [dossier_build]
-"""
+"""Tableau comparatif _vuln vs _prot : effet des mitigations sur le score."""
 
 from __future__ import annotations
 
@@ -21,7 +13,6 @@ from pipeline.models import Confidence, Finding
 from pipeline.scoring import score_all
 from pipeline.static import engine as static_engine
 
-# Entrées connues qui déclenchent chaque vulnérabilité (cf. docs/corpus.md).
 CRASHES = {
     "01_stack_bof": b"A" * 200,
     "02_heap_bof": b"A" * 200,
@@ -40,7 +31,6 @@ def main() -> int:
     print("| Binaire | Classe | Exploitabilité | Sévérité `_vuln` | Sévérité `_prot` |")
     print("|---------|--------|----------------|------------------|------------------|")
     for name, entree in CRASHES.items():
-        # Classe + exploitabilité via le pipeline réel (statique + dynamique corrélés).
         statiques = static_engine.analyze(os.path.join(build, f"{name}_vuln"))
         dyn = triage_input(os.path.join(build, f"{name}_asan"), entree)
         fusionnes = correlate(statiques + ([dyn] if dyn else []))

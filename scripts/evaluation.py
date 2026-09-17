@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""Évaluation de la détection : couverture + faux positifs/négatifs (bonus §4).
-
-Pour chaque binaire du corpus, on mesure :
-  - détection par le moteur STATIQUE seul (au moins un finding) ;
-  - détection par le moteur DYNAMIQUE seul (triage d'un crash) ;
-  - la classe finale attribuée par le pipeline (après corrélation).
-
-On compare à la classe attendue (celle du corpus). Comme chaque binaire ne
-contient qu'une vulnérabilité, un finding de classe inattendue serait un faux
-positif ; l'absence de détection est un faux négatif.
-
-Usage : python scripts/evaluation.py [dossier_build]
-"""
+"""Évaluation de la détection : couverture et faux positifs/négatifs."""
 
 from __future__ import annotations
 

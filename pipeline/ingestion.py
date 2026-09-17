@@ -1,18 +1,4 @@
-"""Étape 1 du pipeline : ingestion du binaire ELF.
-
-Rôle : à partir du seul binaire (vrai black-box), extraire les métadonnées
-nécessaires aux étapes suivantes :
-  - architecture, type (exécutable / PIE), point d'entrée ;
-  - protections en place (NX, canary, PIE, RELRO, FORTIFY), détectées « à la
-    main » en lisant l'ELF, puis recoupées avec l'outil checksec ;
-  - inventaire des fonctions : fonctions importées (candidates aux sinks
-    dangereux) et fonctions définies (nom -> adresse).
-
-On implémente la détection nous-mêmes plutôt que de seulement appeler checksec,
-pour deux raisons : ne dépendre d'aucun outil externe pour le résultat
-principal, et pouvoir expliquer précisément, à la soutenance, où chaque
-protection se lit dans le format ELF.
-"""
+"""Ingestion ELF : métadonnées, protections, fonctions."""
 
 from __future__ import annotations
 
@@ -27,19 +13,13 @@ from elftools.elf.sections import SymbolTableSection
 
 from pipeline.models import ELFInfo
 
-# Constantes ELF utiles (valeurs standard du format).
-PF_X = 0x1              # program header : segment exécutable
-DF_BIND_NOW = 0x8      # DT_FLAGS    : liaison immédiate (contribue au RELRO complet)
-DF_1_NOW = 0x1        # DT_FLAGS_1  : idem, variante moderne
-DF_1_PIE = 0x08000000  # DT_FLAGS_1  : binaire PIE
+PF_X = 0x1
+DF_BIND_NOW = 0x8
+DF_1_NOW = 0x1
+DF_1_PIE = 0x08000000
 
 
 def ingest(path: str, run_checksec: bool = True) -> ELFInfo:
-    """Analyse le binaire `path` et renvoie un `ELFInfo` complet.
-
-    `run_checksec` : si vrai et si checksec est installé, ajoute son verdict sous
-    protections["checksec"] (recoupement, n'altère jamais notre détection).
-    """
     with open(path, "rb") as f:
         elf = ELFFile(f)
 
@@ -66,23 +46,10 @@ def ingest(path: str, run_checksec: bool = True) -> ELFInfo:
 
 
 def _clean_symbol_name(name: str) -> str:
-    """Retire le suffixe de version GNU (« fgets@GLIBC_2.2.5 » -> « fgets »)."""
     return name.split("@", 1)[0] if name else name
 
 
 def _collect_symbols(elf) -> tuple[set[str], dict[str, int], bool]:
-    """Renvoie (noms importés, {nom_défini: adresse}, présence d'une .symtab).
-
-    - Importés : symboles FUNC/NOTYPE non définis (SHN_UNDEF) de la .dynsym,
-                 résolus via la PLT / l'édition de liens dynamique. C'est là que
-                 se trouvent gets, strcpy, printf, __stack_chk_fail, __strcpy_chk.
-    - Définis  : symboles FUNC définis (de la .symtab, ou de la .dynsym si le
-                 binaire est strippé), avec leur adresse (pour cibler le
-                 désassemblage du moteur statique).
-
-    Les suffixes de version (« @GLIBC_... ») sont normalisés pour éviter les
-    doublons et fiabiliser la comparaison à la liste noire de la Phase 3.
-    """
     importes: set[str] = set()
     definies: dict[str, int] = {}
 
@@ -108,7 +75,6 @@ def _collect_symbols(elf) -> tuple[set[str], dict[str, int], bool]:
 
 
 def _detect_protections(elf, importes: set[str], is_pie: bool) -> dict:
-    """Détecte NX, canary, PIE, RELRO et FORTIFY en lisant l'ELF."""
     canary = "__stack_chk_fail" in importes or "__stack_chk_guard" in importes
     fortify = any(n.startswith("__") and n.endswith("_chk") for n in importes)
     return {
@@ -121,11 +87,7 @@ def _detect_protections(elf, importes: set[str], is_pie: bool) -> dict:
 
 
 def _detect_nx(elf) -> bool:
-    """NX activé si le segment PT_GNU_STACK n'est pas exécutable.
-
-    Convention (comme checksec) : en l'absence de PT_GNU_STACK, on considère la
-    pile exécutable (NX désactivé).
-    """
+    # Sans PT_GNU_STACK, on considère la pile exécutable (convention checksec).
     for seg in elf.iter_segments():
         if seg["p_type"] == "PT_GNU_STACK":
             return not bool(seg["p_flags"] & PF_X)
@@ -133,7 +95,6 @@ def _detect_nx(elf) -> bool:
 
 
 def _detect_relro(elf) -> str:
-    """RELRO : 'none' (pas de segment), 'partial' (segment seul), 'full' (+ BIND_NOW)."""
     has_relro = any(seg["p_type"] == "PT_GNU_RELRO" for seg in elf.iter_segments())
     if not has_relro:
         return "none"
@@ -141,7 +102,6 @@ def _detect_relro(elf) -> str:
 
 
 def _has_bind_now(elf) -> bool:
-    """Vrai si la table dynamique impose la résolution immédiate des symboles."""
     dyn = elf.get_section_by_name(".dynamic")
     if dyn is None or not isinstance(dyn, DynamicSection):
         return False
@@ -157,7 +117,6 @@ def _has_bind_now(elf) -> bool:
 
 
 def _checksec_crosscheck(path: str) -> Optional[dict]:
-    """Verdict de checksec (format JSON) pour recoupement, ou None si indisponible."""
     if shutil.which("checksec") is None:
         return None
     try:

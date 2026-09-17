@@ -1,18 +1,4 @@
-"""Triage des crashes : type exact du bug + exploitabilité (moteur dynamique).
-
-Voie principale (la plus fiable) : AddressSanitizer, exploité via CASR
-(`casr-san`), qui exécute la cible instrumentée ASan, classe l'exploitabilité
-(EXPLOITABLE / PROBABLY_EXPLOITABLE / NOT_EXPLOITABLE) et fournit un rapport
-structuré `.casrep` (type, sévérité, pile d'appels). Repli : lecture directe de
-la sortie ASan si CASR est indisponible.
-
-L'entrée peut être fournie sur stdin (défaut) ou en argument fichier
-(`file_input=True`), pour les programmes qui lisent un fichier (ex. un parseur
-d'images comme les cibles de fuzzing réelles).
-
-Chaque crash triagé devient un `Finding` en confiance CONFIRMED (crash
-reproductible), avec classe, fonction, localisation et exploitabilité.
-"""
+"""Triage des crashes via CASR / ASan."""
 
 from __future__ import annotations
 
@@ -33,7 +19,6 @@ _TYPE_RE = re.compile(r"AddressSanitizer:\s+([a-z0-9 -]+?)(?:\s+on\b|\s+at\b|\s*
 
 
 def _class_from_text(text: str) -> VulnClass:
-    """Associe une description de bug (ASan/CASR) à une classe, par sous-chaîne."""
     t = text.lower()
     if "double-free" in t or "double free" in t:
         return VulnClass.DOUBLE_FREE
@@ -52,7 +37,6 @@ def _class_from_text(text: str) -> VulnClass:
 
 
 def _first_source_frame(lines) -> tuple[str, Optional[str], Optional[int]]:
-    """(fonction, fichier, ligne) de la première frame avec info source."""
     for frame in lines:
         if "libasan" in frame or "libc.so" in frame:
             continue
@@ -63,7 +47,6 @@ def _first_source_frame(lines) -> tuple[str, Optional[str], Optional[int]]:
 
 
 def _casr_bin(name: str) -> Optional[str]:
-    """Localise un binaire CASR (PATH, puis ~/.cargo/bin)."""
     found = shutil.which(name)
     if found:
         return found
@@ -72,10 +55,6 @@ def _casr_bin(name: str) -> Optional[str]:
 
 
 def triage_with_casr(asan_bin: str, input_path: str, file_input: bool = False) -> Optional[dict]:
-    """Exécute casr-san et renvoie un dict de triage, ou None si indisponible.
-
-    file_input=False : entrée sur stdin ; True : en argument fichier.
-    """
     casr = _casr_bin("casr-san")
     if casr is None:
         return None
@@ -103,7 +82,6 @@ def triage_with_casr(asan_bin: str, input_path: str, file_input: bool = False) -
 
 
 def triage_with_asan(asan_bin: str, input_path: str, file_input: bool = False) -> Optional[dict]:
-    """Repli : exécute le binaire ASan et lit directement sa sortie d'erreur."""
     env = dict(os.environ, ASAN_OPTIONS="detect_leaks=0:abort_on_error=0")
     try:
         if file_input:
@@ -126,7 +104,6 @@ def triage_with_asan(asan_bin: str, input_path: str, file_input: bool = False) -
 
 
 def triage_input(asan_bin: str, input_bytes: bytes, file_input: bool = False) -> Optional[Finding]:
-    """Triage une entrée qui fait crasher `asan_bin` -> Finding CONFIRMED (ou None)."""
     with tempfile.NamedTemporaryFile(delete=False) as tf:
         tf.write(input_bytes)
         input_path = tf.name
@@ -156,7 +133,6 @@ def triage_input(asan_bin: str, input_bytes: bytes, file_input: bool = False) ->
 
 
 def triage_crashes(asan_bin: str, crash_files: list[str], file_input: bool = False) -> list[Finding]:
-    """Triage une liste de fichiers de crash (sortie AFL), avec déduplication."""
     findings: list[Finding] = []
     seen: set[tuple[str, str]] = set()
     for path in crash_files:

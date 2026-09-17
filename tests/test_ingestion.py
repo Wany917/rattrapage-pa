@@ -1,9 +1,4 @@
-"""Tests de l'étape d'ingestion sur le corpus (profils _vuln vs _prot).
-
-On vérifie que la détection maison des protections colle aux flags de
-compilation connus, que l'inventaire des fonctions est correct, et que le
-recoupement avec checksec concorde.
-"""
+"""Tests de l'ingestion sur le corpus (_vuln vs _prot)."""
 
 import shutil
 

@@ -1,22 +1,4 @@
-"""Analyse « taille de buffer vs taille de copie » (moteur statique).
-
-Objectif (cf. sujet) : retrouver l'allocation d'un buffer, sur la pile
-(sub rsp / lea [rbp-D]) ou sur le tas (malloc), et la comparer à la taille de la
-copie qui le remplit (read, memcpy, fgets...). On signale une copie trop grande
-ou de taille non bornée.
-
-Dataflow léger, suffisant pour du code -O0 :
-  - registres    : lea [rbp-D] -> pointeur de pile de D octets ; retour de
-                   malloc(K) -> pointeur de tas de K octets ; mov propage ;
-                   immédiat -> constante ;
-  - emplacements : les pointeurs sauvés dans une variable locale ([rbp+disp])
-                   sont suivis à travers store/reload. C'est indispensable : à
-                   -O0 les variables vivent en mémoire, pas en registre, donc
-                   un pointeur malloc est écrit sur la pile puis relu avant usage ;
-  - un appel écrase les registres (caller-saved) mais pas les emplacements.
-
-Registres de destination et de taille selon l'ABI SysV x86-64.
-"""
+"""Comparaison taille de buffer vs taille de copie."""
 
 from __future__ import annotations
 
@@ -43,7 +25,6 @@ ALLOC_FUNCS = {"malloc", "calloc", "realloc"}
 
 
 def scan(path: str) -> list[Finding]:
-    """Analyse le binaire et renvoie les findings de taille de buffer."""
     findings: list[Finding] = []
     with open(path, "rb") as f:
         elf = ELFFile(f)
@@ -126,14 +107,12 @@ def _track(dis, insn, reg, slots, frame) -> None:
 
 
 def _rbp_slot(dis, mem) -> Optional[int]:
-    """Clé d'emplacement local si `mem` est [rbp+disp] simple, sinon None."""
     if mem.base and dis.md.reg_name(mem.base) == "rbp" and mem.index == 0:
         return mem.disp
     return None
 
 
 def _stack_ptr(dis, mem, frame) -> Optional[tuple]:
-    """Pointeur de pile pour un lea : ('stackbuf', capacité) ou None."""
     if not mem.base or mem.index != 0:
         return None
     base = dis.md.reg_name(mem.base)
@@ -147,7 +126,6 @@ def _stack_ptr(dis, mem, frame) -> Optional[tuple]:
 
 
 def _alloc_result(target, reg) -> tuple:
-    """Modélise le retour de malloc/calloc/realloc : ('heapbuf', taille|None)."""
     if target == "malloc":
         arg = reg.get("rdi")
     elif target == "realloc":

@@ -1,18 +1,4 @@
-"""Désassemblage et résolution des appels (socle commun du moteur statique).
-
-La classe `Disassembler`, pour un ELF x86-64 :
-  - itère les fonctions définies (nom, adresse, taille) ;
-  - désassemble une fonction avec Capstone (mode détaillé, opérandes accessibles) ;
-  - résout la cible d'un `call` vers le nom de la fonction importée, que l'appel
-    passe par la PLT (`call <stub>`) ou par la GOT (`call [rip+x]`, binaires
-    compilés en -fno-plt) ;
-  - indique si une adresse pointe dans une section en lecture seule (.rodata),
-    pour distinguer une chaîne de format constante d'une variable.
-
-La résolution PLT lit réellement la cible du saut du stub (`jmp [rip+got]`)
-plutôt que de supposer une disposition figée : cela fonctionne pour la PLT
-classique comme pour `.plt.sec` (stubs précédés d'un `endbr64`, CET).
-"""
+"""Désassemblage et résolution des appels PLT/GOT (socle du moteur statique)."""
 
 from __future__ import annotations
 
@@ -23,18 +9,15 @@ from capstone.x86 import X86_OP_IMM, X86_OP_MEM, X86_REG_RIP
 from elftools.elf.relocation import RelocationSection
 from elftools.elf.sections import SymbolTableSection
 
-# Drapeaux de section ELF (champ sh_flags).
 SHF_WRITE = 0x1
 SHF_ALLOC = 0x2
 SHF_EXECINSTR = 0x4
 
 
 def _clean(name: str) -> str:
-    """Retire le suffixe de version GNU (« strcpy@GLIBC_2.2.5 » -> « strcpy »)."""
     return name.split("@", 1)[0] if name else name
 
 
-# Sous-registres -> registre 64 bits canonique (pour la propagation de dataflow).
 CANON = {
     "rax": "rax", "eax": "rax", "ax": "rax", "al": "rax",
     "rcx": "rcx", "ecx": "rcx", "cx": "rcx", "cl": "rcx",
@@ -46,7 +29,6 @@ CANON = {
 
 
 class Disassembler:
-    """Fournit désassemblage et résolution d'appels pour un ELFFile ouvert."""
 
     def __init__(self, elf):
         self.elf = elf
@@ -60,7 +42,6 @@ class Disassembler:
         self.got_map = self._build_got_map()
         self._plt_cache: dict[int, Optional[str]] = {}
 
-    # ------------------------------------------------------------------ mémoire
     def _load_sections(self) -> None:
         for sec in self.elf.iter_sections():
             addr = sec["sh_addr"]
@@ -68,7 +49,6 @@ class Disassembler:
                 self._sections.append((addr, sec["sh_size"], sec.data()))
 
     def read_vaddr(self, addr: int, size: int) -> Optional[bytes]:
-        """Renvoie `size` octets à l'adresse virtuelle de link `addr`, ou None."""
         for base, sz, data in self._sections:
             if base <= addr < base + sz:
                 off = addr - base
@@ -86,7 +66,6 @@ class Disassembler:
         return ranges
 
     def _compute_writable_ranges(self) -> list[tuple[int, int]]:
-        # Sections de données inscriptibles (.data, .bss) : y compris NOBITS (.bss).
         ranges = []
         for sec in self.elf.iter_sections():
             flags = sec["sh_flags"]
@@ -97,20 +76,15 @@ class Disassembler:
         return ranges
 
     def is_const_ptr(self, addr: int) -> bool:
-        """Vrai si `addr` tombe dans une section allouée en lecture seule."""
         return any(start <= addr < end for start, end in self.ro_ranges)
 
     def is_writable_data(self, addr: int) -> bool:
-        """Vrai si `addr` tombe dans une section de données inscriptible (.data/.bss)."""
         return any(start <= addr < end for start, end in self.writable_ranges)
 
     def canon(self, reg_id: int) -> Optional[str]:
-        """Registre 64 bits canonique (rdi pour edi/di/dil...), ou None si non suivi."""
         return CANON.get(self.md.reg_name(reg_id))
 
-    # ------------------------------------------------------------------ imports
     def _build_got_map(self) -> dict[int, str]:
-        """Table {adresse d'entrée GOT -> nom de la fonction importée}."""
         mapping: dict[int, str] = {}
         for secname in (".rela.plt", ".rela.dyn"):
             sec = self.elf.get_section_by_name(secname)
@@ -129,7 +103,6 @@ class Disassembler:
         return mapping
 
     def _resolve_plt_stub(self, addr: int) -> Optional[str]:
-        """Nom résolu si `addr` est un stub PLT (`... jmp [rip+got]`)."""
         if addr in self._plt_cache:
             return self._plt_cache[addr]
         result = None
@@ -151,7 +124,6 @@ class Disassembler:
         return result
 
     def resolve_call(self, insn) -> Optional[str]:
-        """Nom de la fonction importée appelée par `insn`, ou None."""
         if not insn.mnemonic.endswith("call"):
             return None
         for op in insn.operands:
@@ -162,13 +134,7 @@ class Disassembler:
                 return self.got_map.get(got)
         return None
 
-    # ---------------------------------------------------------------- fonctions
     def iter_functions(self) -> Iterator[tuple[str, int, int]]:
-        """Itère (nom, adresse, taille) des fonctions définies.
-
-        Si le binaire est strippé (pas de .symtab), renvoie une pseudo-fonction
-        couvrant toute la section .text.
-        """
         symtab = self.elf.get_section_by_name(".symtab")
         if isinstance(symtab, SymbolTableSection):
             for sym in symtab.iter_symbols():
@@ -182,7 +148,6 @@ class Disassembler:
                 yield "(.text)", text["sh_addr"], text["sh_size"]
 
     def disasm_function(self, start: int, size: int):
-        """Itère les instructions Capstone de la fonction [start, start+size)."""
         code = self.read_vaddr(start, size)
         if code:
             yield from self.md.disasm(code, start)

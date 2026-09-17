@@ -1,8 +1,4 @@
-"""Rapport HTML (lisible par un humain), autonome et coloré par sévérité.
-
-Rendu via jinja2. Le HTML est autonome (CSS en ligne), ouvrable dans un
-navigateur ou imprimable en PDF pour le rapport final.
-"""
+"""Rapport HTML autonome, coloré par sévérité."""
 
 from __future__ import annotations
 
@@ -13,7 +9,6 @@ from jinja2 import Template
 from pipeline import __version__
 from pipeline.models import Report
 
-# Sévérité -> (couleur texte, couleur fond, libellé).
 _SEV_STYLE = {
     "critical": ("#b3261e", "#fce8e6", "CRITICAL"),
     "high": ("#c8641d", "#fdefe3", "HIGH"),
@@ -172,7 +167,6 @@ def render_html(report: Report) -> str:
 
 
 def write_html(report: Report, path: str) -> str:
-    """Écrit le rapport HTML dans `path` et renvoie ce chemin."""
     with open(path, "w", encoding="utf-8") as f:
         f.write(render_html(report))
     return path
