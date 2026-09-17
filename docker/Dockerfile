@@ -51,6 +51,12 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal \
     && /root/.cargo/bin/cargo install casr --locked \
     && rm -rf /root/.cargo/registry /root/.cargo/git
 
+# qemu-user : gdbstub pour lire l'état registre x86-64 invité quand le binaire
+# tourne émulé (Rosetta), où ptrace et core dump ne l'exposent pas. Sert au PoC
+# de contrôle de RIP. Couche dédiée pour préserver le cache d'AFL++/CASR.
+RUN apt-get update && apt-get install -y --no-install-recommends qemu-user \
+    && rm -rf /var/lib/apt/lists/*
+
 # Ubuntu active _FORTIFY_SOURCE par défaut dès -O1 : read(buf, 4096) dans un tas
 # de 64 déclenche alors le garde-fou glibc (SIGABRT) AVANT qu'ASan ne voie le
 # débordement, et CASR ne classe plus qu'un « AbortSignal ». Arch (cible de réf)
